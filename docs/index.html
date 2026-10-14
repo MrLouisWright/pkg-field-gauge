@@ -57,7 +57,7 @@
         <a class="btn" href="https://github.com/MrLouisWright/pkg-field-gauge">Source on GitHub</a>
       </div>
       <div class="badges">
-        <a href="https://github.com/MrLouisWright/pkg-field-gauge/pkgs/npm/pkg-field-gauge"><img src="https://img.shields.io/badge/GitHub%20Packages-%40mrlouiswright%2Fpkg-field-gauge-24292f?style=flat-square&amp;logo=github" alt="GitHub Packages: @mrlouiswright/pkg-field-gauge" height="20"></a><a href="https://github.com/MrLouisWright/pkg-field-gauge/releases"><img src="https://img.shields.io/github/v/tag/MrLouisWright/pkg-field-gauge?style=flat-square&amp;label=version" alt="Latest version tag" height="20"></a>
+        <a href="https://github.com/MrLouisWright/pkg-field-gauge/pkgs/npm/pkg-field-gauge"><img src="https://img.shields.io/badge/GitHub%20Packages-%40mrlouiswright%2Fpkg--field--gauge-24292f?style=flat-square&amp;logo=github" alt="GitHub Packages: @mrlouiswright/pkg-field-gauge" height="20"></a><a href="https://github.com/MrLouisWright/pkg-field-gauge/releases"><img src="https://img.shields.io/github/v/tag/MrLouisWright/pkg-field-gauge?style=flat-square&amp;label=version" alt="Latest version tag" height="20"></a>
         <a href="https://github.com/MrLouisWright/pkg-field-gauge/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/MrLouisWright/pkg-field-gauge/ci.yml?branch=main&amp;style=flat-square&amp;label=CI" alt="CI status" height="20"></a>
         <a href="https://github.com/MrLouisWright/pkg-field-gauge/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg?style=flat-square" alt="License: MIT" height="20"></a>
         <a href="https://github.com/MrLouisWright/pkg-field-gauge"><img src="https://img.shields.io/github/stars/MrLouisWright/pkg-field-gauge?style=flat-square" alt="GitHub stars for pkg-field-gauge" height="20"></a>
@@ -74,7 +74,7 @@
 <section class="sec" id="problem">
   <div class="wrap narrow">
     <h2><span class="h-idx">01</span> Why it exists</h2>
-    <p class="big">A package can pass its tests and still ship broken. The types condition sits after import, so TypeScript never sees it. require points at an ESM file. main and exports[&quot;.&quot;] load different files. The .d.ts isn't covered by files. sideEffects: false lets bundlers drop your CSS. The repository doesn't match the git remote, so provenance publishing fails. pkg-field-gauge resolves every entry point on disk and checks each field the way Node, TypeScript, bundlers and npm read it. Every finding has a line number and a concrete fix.</p>
+    <p class="big">A package can pass its tests and still ship broken. The types condition sits after import, so TypeScript never sees it. require points at an ESM file. main and “exports[&quot;.&quot;]” load different files. The .d.ts isn't covered by files. “sideEffects: false” lets bundlers drop your CSS. The repository doesn't match the git remote, so provenance publishing fails. pkg-field-gauge resolves every entry point on disk and checks each field the way Node, TypeScript, bundlers and npm read it. Every finding has a line number and a concrete fix.</p>
     <p class="big">CLI, library and GitHub Action. Node.js 18+, zero runtime dependencies. By Louis Wright.</p>
   </div>
 </section>
