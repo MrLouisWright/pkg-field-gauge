@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.1 (2026-10-14)
+
+- Fix: `repository-mismatch` no longer compares a package against the git remote of an enclosing repository unless `repository.directory` places it there (fixtures and nested packages were flagged in CI).
+
 ## 1.0.0 (2026-10-14)
 
 First release, by Louis Wright.

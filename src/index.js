@@ -1,5 +1,5 @@
 import { readFileSync, existsSync, statSync, readdirSync, openSync, readSync, closeSync } from 'node:fs';
-import { join, posix, extname } from 'node:path';
+import { join, posix, extname, relative } from 'node:path';
 import { builtinModules } from 'node:module';
 import { globToRe } from './glob.js';
 import { buildReport, UsageError } from './core.js';
@@ -107,11 +107,15 @@ function patternExists(dir, target) {
   return walk(base.replace(/\/$/, ''), 0);
 }
 
-function gitRemote(dir) {
+/** origin URL of the git repo containing dir. Only trusted when dir is the repo root, or repository.directory says where the package lives. */
+function gitRemote(dir, directory) {
   let d = dir;
   for (let i = 0; i < 8; i++) {
     const cfg = join(d, '.git', 'config');
-    if (existsSync(cfg)) { const m = /\[remote "origin"\][^[]*?url\s*=\s*(\S+)/.exec(readFileSync(cfg, 'utf8')); return m ? m[1] : null; }
+    if (existsSync(cfg)) {
+      if (d !== dir && !(directory && posix.normalize(relative(d, dir).split('\\').join('/')) === norm(directory))) return null;
+      const m = /\[remote "origin"\][^[]*?url\s*=\s*(\S+)/.exec(readFileSync(cfg, 'utf8')); return m ? m[1] : null;
+    }
     const up = join(d, '..'); if (up === d) break; d = up;
   }
   return null;
@@ -227,7 +231,7 @@ export function analyze(dir, opts = {}) {
       const url = typeof pkg.repository === 'string' ? pkg.repository : pkg.repository.url;
       if (!url) add('repository-mismatch', 'repository', 'repository has no "url"', 'Add the git URL.', 'repository');
       else {
-        const remote = gitRemote(dir);
+        const remote = gitRemote(dir, typeof pkg.repository === 'object' ? pkg.repository.directory : undefined);
         const a = repoSlug(url); const b = repoSlug(remote);
         if (a && b && a !== b) add('repository-mismatch', 'repository', `repository points at ${a} but the git remote origin is ${b}`, `Use the actual repository (${b}); provenance publishing fails on a mismatch.`, 'repository');
         if (typeof pkg.repository === 'string' && !/^((github|gitlab|bitbucket|gist):)?[\w.-]+\/[\w.-]+$/.test(url) && !/^(git\+)?(https?|ssh|git):\/\//.test(url) && !/^git@/.test(url)) add('repository-mismatch', 'repository', `repository "${url}" is neither a URL nor an "owner/repo" shorthand`, 'Use "git+https://github.com/<owner>/<repo>.git".', 'repository');

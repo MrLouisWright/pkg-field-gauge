@@ -74,6 +74,11 @@ test('repository vs git remote', () => {
   assert.deepEqual(rules(check(d)), ['repository-mismatch']);
   writeFileSync(join(d, '.git/config'), '[remote "origin"]\n\turl = https://github.com/a/p\n');
   assert.deepEqual(rules(check(d)), []);
+  // a package nested in another repo is only compared when repository.directory says so
+  const outer = proj({ name: 'root', private: true }, { '.git/config': '[remote "origin"]\n\turl = https://github.com/other/mono\n', 'pkgs/p/package.json': JSON.stringify({ ...BASE, main: 'i.js' }), 'pkgs/p/i.js': '' });
+  assert.deepEqual(rules(check(join(outer, 'pkgs/p'))), []);
+  writeFileSync(join(outer, 'pkgs/p/package.json'), JSON.stringify({ ...BASE, main: 'i.js', repository: { ...BASE.repository, directory: 'pkgs/p' } }));
+  assert.deepEqual(rules(check(join(outer, 'pkgs/p'))), ['repository-mismatch']);
 });
 test('sideEffects', () => {
   assert.deepEqual(only({ main: 'i.js', sideEffects: false }, { 'i.js': '', 'styles/a.css': '' }), ['side-effects-invalid']);
