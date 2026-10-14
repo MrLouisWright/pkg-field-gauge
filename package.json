@@ -1,0 +1,54 @@
+{
+  "name": "pkg-field-gauge",
+  "version": "1.0.0",
+  "description": "Validate package.json before you publish: exports/main/types/bin consistency and condition order, targets that do not exist or are not in \"files\", ESM/CJS mismatches, name/version rules, repository, keywords, license and sideEffects. Text/JSON/SARIF/Markdown, allowlist with expiry, GitHub Action. Zero deps.",
+  "type": "module",
+  "main": "./src/index.js",
+  "types": "./src/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./src/index.d.ts",
+      "default": "./src/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "bin": {
+    "pkg-field-gauge": "bin/pkg-field-gauge.js"
+  },
+  "files": [
+    "src",
+    "bin",
+    "action.yml",
+    "README.md",
+    "CHANGELOG.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "test": "node --test test/*.test.js"
+  },
+  "keywords": [
+    "package-json",
+    "exports",
+    "lint",
+    "npm",
+    "publish",
+    "types",
+    "esm",
+    "commonjs",
+    "sarif",
+    "github-action"
+  ],
+  "author": "Louis Wright <hello@louiswright.co.uk> (https://github.com/MrLouisWright)",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/MrLouisWright/pkg-field-gauge.git"
+  },
+  "bugs": {
+    "url": "https://github.com/MrLouisWright/pkg-field-gauge/issues"
+  },
+  "homepage": "https://github.com/MrLouisWright/pkg-field-gauge#readme"
+}

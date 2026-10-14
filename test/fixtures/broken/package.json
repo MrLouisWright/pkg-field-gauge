@@ -1,0 +1,20 @@
+{
+  "name": "Broken_Pkg",
+  "version": "1.0",
+  "type": "module",
+  "main": "lib/missing.js",
+  "types": "lib/index.d.ts",
+  "exports": {
+    ".": { "require": "./lib/index.js", "default": "./lib/index.js", "types": "./lib/index.d.ts" },
+    "./extra": "lib/extra.js",
+    "./gone": "./lib/gone.js",
+    "./legacy": { "import": "./lib/legacy.cjs" }
+  },
+  "bin": { "broken": "bin/cli.js" },
+  "files": ["lib/index.js", "nothing-here"],
+  "sideEffects": false,
+  "license": "Apache 2",
+  "keywords": [],
+  "repository": "not a url",
+  "preferGlobal": true
+}

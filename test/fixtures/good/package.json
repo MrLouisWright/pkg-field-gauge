@@ -1,0 +1,21 @@
+{
+  "name": "@acme/good",
+  "version": "1.2.3",
+  "description": "A well-formed package",
+  "keywords": ["acme", "good"],
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": { "types": "./dist/index.d.ts", "import": "./dist/index.js", "require": "./dist/index.cjs" },
+    "./utils/*": "./dist/utils/*.js",
+    "./package.json": "./package.json"
+  },
+  "bin": { "good": "./bin/good.js" },
+  "files": ["dist", "bin"],
+  "sideEffects": false,
+  "engines": { "node": ">=18" },
+  "repository": { "type": "git", "url": "git+https://github.com/acme/good.git" },
+  "homepage": "https://github.com/acme/good#readme"
+}

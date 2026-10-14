@@ -1,0 +1,10 @@
+export * from './core.js';
+import type { Report, Config, Rule, Finding } from './core.js';
+export const RULES: Record<string, Rule>;
+export function check(dir: string, opts?: { require?: string[]; now?: Date }, config?: Config & { require?: string[] }, configFile?: string): Report;
+export function analyze(dir: string, opts?: { require?: string[] }): { pkg: Record<string, unknown>; findings: Finding[] };
+export function validName(name: unknown): string[];
+export function validLicense(expression: string): boolean;
+export function resolveEntry(dir: string, path: string): string | null;
+export function walkExports(exports: unknown, visit: (v: { subpath: string; conditions: string[]; target?: string; order?: string[] }) => void, problems: string[]): void;
+export function globToRe(glob: string): RegExp;

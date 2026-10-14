@@ -1,0 +1,44 @@
+name: 'pkg-field-gauge'
+description: 'Validate package.json fields: exports/main/types consistency, files, repository, keywords, sideEffects'
+author: 'Louis Wright'
+branding: { icon: 'file-text', color: 'blue' }
+inputs:
+  path: { description: 'Project directory (default: repository root)', default: '.' }
+  fail-on: { description: 'critical | high | medium | low | info | none', default: 'high' }
+  config: { description: 'Path to JSON config file', default: '' }
+  sarif: { description: 'Write SARIF to this path', default: '' }
+  json: { description: 'Write JSON report to this path', default: '' }
+  job-summary: { description: 'Write the Markdown report to the job summary (true/false)', default: 'true' }
+  args: { description: 'Extra CLI arguments', default: '' }
+outputs:
+  markdown-file: { description: 'Path of the Markdown report', value: '${{ steps.run.outputs.markdown-file }}' }
+runs:
+  using: 'composite'
+  steps:
+    - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+      with: { node-version: '20' }
+    - id: run
+      shell: bash
+      env:
+        PF_PATH: ${{ inputs.path }}
+        PF_FAIL_ON: ${{ inputs.fail-on }}
+        PF_CONFIG: ${{ inputs.config }}
+        PF_SARIF: ${{ inputs.sarif }}
+        PF_JSON: ${{ inputs.json }}
+        PF_SUMMARY: ${{ inputs.job-summary }}
+        PF_ARGS: ${{ inputs.args }}
+        PF_BIN: ${{ github.action_path }}/bin/pkg-field-gauge.js
+      run: |
+        md="$RUNNER_TEMP/pkg-field-gauge.md"
+        args=("$PF_PATH" --fail-on "$PF_FAIL_ON" --markdown "$md")
+        [ -n "$PF_CONFIG" ] && args+=(--config "$PF_CONFIG")
+        [ -n "$PF_SARIF" ] && args+=(--sarif "$PF_SARIF")
+        [ -n "$PF_JSON" ] && args+=(--json "$PF_JSON")
+        set +e
+        # shellcheck disable=SC2086
+        node "$PF_BIN" "${args[@]}" $PF_ARGS
+        code=$?
+        set -e
+        echo "markdown-file=$md" >> "$GITHUB_OUTPUT"
+        if [ "$PF_SUMMARY" = "true" ] && [ -f "$md" ]; then cat "$md" >> "$GITHUB_STEP_SUMMARY"; fi
+        exit $code
