@@ -4,8 +4,11 @@ import { builtinModules } from 'node:module';
 import { globToRe } from './glob.js';
 import { buildReport, UsageError } from './core.js';
 
+import { resolveTypes, resolveExports, formatOf, MODES } from './types.js';
+import { packedFiles } from './pack.js';
+import { formatHtml } from './html.js';
 export * from './core.js';
-export { globToRe };
+export { globToRe, resolveTypes, resolveExports, formatOf, MODES, packedFiles, formatHtml };
 
 export const RULES = {
   'invalid-name': { severity: 'critical', title: 'name is missing or not a valid npm package name' },
@@ -13,6 +16,11 @@ export const RULES = {
   'entry-missing': { severity: 'high', title: 'main/module/types/bin/browser points at a file that does not exist' },
   'exports-target-missing': { severity: 'high', title: 'An exports target does not exist' },
   'exports-invalid': { severity: 'high', title: 'exports is malformed (relative ./ targets, subpaths vs conditions)' },
+  'types-unresolved': { severity: 'high', title: 'TypeScript cannot find types for an entry point in some module-resolution mode' },
+  'not-in-tarball': { severity: 'high', title: 'An entry point exists on disk but is not in the packed tarball (npm pack)' },
+  'types-false-esm': { severity: 'medium', title: 'Types are ESM but the JavaScript is CommonJS for this resolution mode ("masquerading as ESM")' },
+  'types-false-cjs': { severity: 'medium', title: 'Types are CommonJS but the JavaScript is ESM for this resolution mode ("masquerading as CJS")' },
+  'types-node10-subpath': { severity: 'low', title: 'Subpath export has no types under moduleResolution node10 (add typesVersions or a stub)' },
   'not-in-files': { severity: 'high', title: 'An entry point is not included by "files", so it will not be published' },
   'format-mismatch': { severity: 'medium', title: 'require/import target has the wrong module format for its extension and "type"' },
   'exports-condition-order': { severity: 'medium', title: '"types" must be the first condition and "default" the last' },
@@ -31,7 +39,6 @@ export const RULES = {
   'deprecated-field': { severity: 'low', title: 'Deprecated or non-standard field' },
   'required-field': { severity: 'low', title: 'A field required by your config is missing' },
   'package-json-not-exported': { severity: 'info', title: 'exports hides ./package.json from tools' },
-  'engines-missing': { severity: 'info', title: 'No engines.node' },
   'homepage-missing': { severity: 'info', title: 'No homepage or bugs URL' },
 };
 
@@ -62,7 +69,8 @@ export function validName(n) {
 const SEMVER = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$/;
 
 const norm = (p) => posix.normalize(String(p).replace(/\\/g, '/')).replace(/^\.\//, '').replace(/\/$/, '');
-function exists(dir, p) { try { return statSync(join(dir, p)).isFile(); } catch { return false; } }
+let PACKED = null; // Set of packed paths while analysing in tarball mode
+function exists(dir, p) { if (PACKED) return PACKED.has(p); try { return statSync(join(dir, p)).isFile(); } catch { return false; } }
 /** Resolve a CommonJS-style entry (main): exact, +ext, /index. */
 export function resolveEntry(dir, p) {
   const n = norm(p);
@@ -129,6 +137,10 @@ function filesCovers(files, p) {
 }
 
 export function analyze(dir, opts = {}) {
+  PACKED = opts.packed ? new Set(opts.packed.files || opts.packed) : null;
+  try { return analyzeInner(dir, opts); } finally { PACKED = null; }
+}
+function analyzeInner(dir, opts) {
   const pj = join(dir, 'package.json');
   if (!existsSync(pj)) throw new UsageError(`No package.json in ${dir}`);
   let text = readFileSync(pj, 'utf8'); let pkg;
@@ -146,7 +158,7 @@ export function analyze(dir, opts = {}) {
   if (!isPrivate || pkg.version !== undefined) { if (typeof pkg.version !== 'string' || !SEMVER.test(pkg.version)) add('invalid-version', 'version', pkg.version === undefined ? 'package.json has no "version"' : `version "${pkg.version}" is not valid SemVer`, 'Use MAJOR.MINOR.PATCH, e.g. "1.0.0".', 'version'); }
 
   // types of fields
-  const types = { name: 'string', version: 'string', description: 'string', keywords: 'array', main: 'string', module: 'string', types: 'string', typings: 'string', files: 'array', license: 'string', type: 'string', private: 'boolean', engines: 'object', scripts: 'object', dependencies: 'object', devDependencies: 'object', peerDependencies: 'object', optionalDependencies: 'object', publishConfig: 'object', workspaces: 'array|object', bin: 'string|object', repository: 'string|object', bugs: 'string|object', homepage: 'string', author: 'string|object', funding: 'string|object|array', sideEffects: 'boolean|array' };
+  const types = { name: 'string', version: 'string', description: 'string', keywords: 'array', main: 'string', module: 'string', types: 'string', typings: 'string', files: 'array', license: 'string', type: 'string', private: 'boolean', scripts: 'object', dependencies: 'object', devDependencies: 'object', peerDependencies: 'object', optionalDependencies: 'object', publishConfig: 'object', workspaces: 'array|object', bin: 'string|object', repository: 'string|object', bugs: 'string|object', homepage: 'string', author: 'string|object', funding: 'string|object|array', sideEffects: 'boolean|array' };
   const typeOf = (v) => (Array.isArray(v) ? 'array' : v === null ? 'null' : typeof v);
   for (const [k, want] of Object.entries(types)) if (k in pkg && !want.split('|').includes(typeOf(pkg[k]))) add(k === 'sideEffects' ? 'side-effects-invalid' : 'field-type', k, `"${k}" is ${typeOf(pkg[k])}, expected ${want.replace(/\|/g, ' or ')}`, `Fix the type of "${k}".`, k);
   if (pkg.type !== undefined && !['module', 'commonjs'].includes(pkg.type)) add('field-type', 'type', `"type" is "${pkg.type}"; only "module" or "commonjs" are valid`, 'Use "module" or "commonjs".', 'type');
@@ -207,8 +219,31 @@ export function analyze(dir, opts = {}) {
     if (!problems.some((p) => p.includes('mixes')) && !visited.some((v) => v.subpath === './package.json') && !Object.keys(typeof pkg.exports === 'object' && pkg.exports ? pkg.exports : {}).some((k) => k.includes('*') && globToRe(norm(k).replace(/\*/g, '**')).test('package.json'))) add('package-json-not-exported', 'exports:./package.json', 'exports does not include "./package.json"; tools that read it via require() fail', 'Add "./package.json": "./package.json".', 'exports');
   }
 
+  // tarball mode: entries that exist on disk but are not packed
+  if (PACKED) {
+    const disk = (p) => { try { return statSync(join(dir, p)).isFile(); } catch { return false; } };
+    const seen = new Set();
+    for (const f of [...findings]) {
+      const m = /"([^"]+)" does not exist/.exec(f.message) || /→ "([^"]+)" does not exist/.exec(f.message);
+      if ((f.rule === 'entry-missing' || f.rule === 'exports-target-missing') && m && disk(norm(m[1]))) { f.rule = 'not-in-tarball'; f.severity = RULES['not-in-tarball'].severity; f.message = `${f.message.replace(/ does not exist$/, '')} exists locally but is not in the npm pack tarball`; f.fix = 'Add it to "files" (or remove it from .npmignore), then re-run with --pack.'; }
+    }
+  }
+  // types per module-resolution mode (attw-style)
+  if (opts.types !== false) {
+    const res = resolveTypes(dir, pkg, { fileExists: (p) => exists(dir, p) });
+    const groups = new Map();
+    for (const r of res) if (r.problem) { const k = `${r.subpath}\0${r.problem}`; if (!groups.has(k)) groups.set(k, { ...r, modes: [] }); groups.get(k).modes.push(r.mode); }
+    for (const gq of groups.values()) {
+      const where = `exports["${gq.subpath}"] under ${gq.modes.join(', ')}`;
+      if (gq.problem === 'unresolved' && findings.some((f) => (f.rule === 'types-not-exported' && f.subject === `exports:${gq.subpath}`) || (f.rule === 'format-mismatch' && f.subject === `exports:${gq.subpath}` && /"types" condition/.test(f.message)))) continue;
+      if (gq.problem === 'unresolved') add('types-unresolved', `types:${gq.subpath}`, `${where}: TypeScript finds no declaration file${gq.js ? ` for ${gq.js}` : ''}`, `Add a "types" condition (first) or a .d.ts next to ${gq.js || 'the entry'}${gq.modes.includes('node16-cjs') ? '; for require use a .d.cts' : ''}.`, 'exports');
+      else if (gq.problem === 'false-esm') add('types-false-esm', `types:${gq.subpath}`, `${where}: types ${gq.types} are ESM but ${gq.js} is CommonJS`, 'Give the require branch its own .d.cts declaration (e.g. "require": { "types": "./dist/index.d.cts", "default": "./dist/index.cjs" }).', 'exports');
+      else if (gq.problem === 'false-cjs') add('types-false-cjs', `types:${gq.subpath}`, `${where}: types ${gq.types} are CommonJS but ${gq.js} is ESM`, 'Give the import branch its own .d.ts/.d.mts declaration.', 'exports');
+      else if (gq.problem === 'node10-subpath') add('types-node10-subpath', `types:${gq.subpath}`, `"${gq.subpath}" has no types under moduleResolution node10 (it ignores "exports")`, `Add "typesVersions": { "*": { "${gq.subpath.slice(2)}": ["<path to .d.ts>"] } } if you support node10 users.`, 'exports');
+    }
+  }
   // files
-  if (Array.isArray(pkg.files)) {
+  if (Array.isArray(pkg.files) && !PACKED) {
     const seenPaths = new Set();
     for (const e of entries) if (e.field !== 'main' && e.field !== 'bin' && !seenPaths.has(e.path) && seenPaths.add(e.path) && !filesCovers(pkg.files, e.pattern ? e.path.split('*')[0] + 'x' : e.path)) add('not-in-files', `files:${e.path}`, `${e.field} target "${e.path}" is not included by "files", so it will be missing from the published package`, `Add "${e.path.split('/')[0]}" to "files".`, 'files');
     for (const f of pkg.files) {
@@ -238,7 +273,6 @@ export function analyze(dir, opts = {}) {
         if (typeof pkg.repository === 'object' && pkg.repository.url && !/^(git\+)?(https?|ssh|git):\/\//.test(pkg.repository.url) && !/^git@/.test(pkg.repository.url)) add('repository-mismatch', 'repository', `repository.url "${pkg.repository.url}" is not a full git URL`, 'Use "git+https://github.com/<owner>/<repo>.git".', 'repository');
       }
     }
-    if (!pkg.engines?.node) add('engines-missing', 'engines', 'no "engines.node"', 'Declare the supported Node.js range, e.g. ">=18".', 'name');
     if (!pkg.homepage && !pkg.bugs) add('homepage-missing', 'homepage', 'no "homepage" or "bugs"', 'Add them so users can find docs and report issues.', 'name');
   }
   for (const [k, why] of [['preferGlobal', 'ignored since npm 5'], ['engineStrict', 'removed in npm 3'], ['jsnext:main', 'superseded by "module"/"exports"'], ['licenses', 'use "license" (SPDX)'], ['licence', 'misspelt; npm reads "license"'], ['typings', 'prefer "types"']]) if (k in pkg) add('deprecated-field', k, `"${k}": ${why}`, `Remove "${k}"${k === 'typings' ? ' and use "types"' : ''}.`, k);
@@ -252,8 +286,23 @@ export function analyze(dir, opts = {}) {
   return { pkg, findings };
 }
 
+/**
+ * Per-package check API (stable, used by monorepo-gauge): raw findings for one package directory,
+ * without severity overrides or allowlists. Pass { rules } to keep only some rules, { skip } to drop some.
+ * @param {string} dir
+ * @param {{ require?: string[], pack?: boolean, packed?: string[] | {files: string[]}, types?: boolean, rules?: string[], skip?: string[] }} [opts]
+ * @returns {{ name: string|undefined, version: string|undefined, private: boolean, findings: {rule: string, severity: string, file: string, line?: number, subject: string, message: string, fix: string}[], tarball?: object }}
+ */
+export function checkPackage(dir, opts = {}) {
+  const packed = opts.packed || (opts.pack ? packedFiles(dir) : undefined);
+  const { pkg, findings } = analyze(dir, { ...opts, packed });
+  const keep = findings.filter((f) => (!opts.rules || opts.rules.includes(f.rule)) && !(opts.skip || []).includes(f.rule));
+  return { name: pkg.name, version: pkg.version, private: pkg.private === true, findings: keep, ...(packed && !Array.isArray(packed) && packed.size != null ? { tarball: { files: packed.files.length, size: packed.size, unpackedSize: packed.unpackedSize } } : {}) };
+}
+
 export function check(dir, opts = {}, config = {}, configFile) {
-  const { pkg, findings } = analyze(dir, { require: [...(config.require || []), ...(opts.require || [])] });
+  const packed = opts.packed || (opts.pack ? (() => { try { return packedFiles(dir); } catch (e) { throw new UsageError(e.message); } })() : undefined);
+  const { pkg, findings } = analyze(dir, { require: [...(config.require || []), ...(opts.require || [])], packed, types: opts.types ?? config.types });
   const tool = { name: 'pkg-field-gauge', version: opts.toolVersion || '1.0.0', rules: RULES, emoji: '📦', defaultFile: 'package.json' };
-  return buildReport(tool, `${pkg.name || 'package'}${pkg.version ? '@' + pkg.version : ''}`, findings, config, { now: opts.now, configFile, summaryLine: `${pkg.type === 'module' ? 'ESM' : 'CommonJS'} package${pkg.private ? ' (private)' : ''}; ${pkg.exports ? 'exports' : 'no exports'}, ${Object.keys(typeof pkg.bin === 'object' && pkg.bin ? pkg.bin : pkg.bin ? { x: 1 } : {}).length} bin(s), ${Array.isArray(pkg.files) ? `files: ${pkg.files.length} entr${pkg.files.length === 1 ? 'y' : 'ies'}` : 'no files list'}` });
+  return buildReport(tool, `${pkg.name || 'package'}${pkg.version ? '@' + pkg.version : ''}`, findings, config, { now: opts.now, configFile, summaryLine: `${pkg.type === 'module' ? 'ESM' : 'CommonJS'} package${pkg.private ? ' (private)' : ''}; ${pkg.exports ? 'exports' : 'no exports'}, ${Object.keys(typeof pkg.bin === 'object' && pkg.bin ? pkg.bin : pkg.bin ? { x: 1 } : {}).length} bin(s), ${Array.isArray(pkg.files) ? `files: ${pkg.files.length} entr${pkg.files.length === 1 ? 'y' : 'ies'}` : 'no files list'}${packed && packed.size != null ? `; tarball: ${packed.files.length} files, ${packed.size} B packed` : ''}` });
 }

@@ -12,7 +12,7 @@ test('good fixture is clean', () => { assert.deepEqual(check(FX('good')).finding
 test('broken fixture: rule coverage', () => {
   const r = check(FX('broken'));
   const got = new Set(rules(r));
-  for (const x of ['invalid-name', 'invalid-version', 'entry-missing', 'exports-target-missing', 'exports-invalid', 'not-in-files', 'exports-condition-order', 'format-mismatch', 'bin-no-shebang', 'description-missing', 'keywords-missing', 'files-entry-unmatched', 'license-invalid', 'deprecated-field', 'repository-mismatch', 'engines-missing', 'homepage-missing', 'package-json-not-exported']) assert.ok(got.has(x), x);
+  for (const x of ['invalid-name', 'invalid-version', 'entry-missing', 'exports-target-missing', 'exports-invalid', 'not-in-files', 'exports-condition-order', 'format-mismatch', 'bin-no-shebang', 'description-missing', 'keywords-missing', 'files-entry-unmatched', 'license-invalid', 'deprecated-field', 'repository-mismatch', 'homepage-missing', 'package-json-not-exported']) assert.ok(got.has(x), x);
   assert.equal(r.findings.filter((f) => f.rule === 'not-in-files' && f.subject === 'files:lib/index.d.ts').length, 1, 'deduped');
   assert.ok(r.findings.every((f) => f.file === 'package.json' && f.line > 0));
 });

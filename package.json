@@ -3,12 +3,19 @@
   "version": "1.0.1",
   "description": "Validate package.json before you publish: exports/main/types/bin consistency and condition order, targets that do not exist or are not in \"files\", ESM/CJS mismatches, name/version rules, repository, keywords, license and sideEffects. Text/JSON/SARIF/Markdown, allowlist with expiry, GitHub Action. Zero deps.",
   "type": "module",
-  "main": "./src/index.js",
-  "types": "./src/index.d.ts",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "exports": {
     ".": {
-      "types": "./src/index.d.ts",
-      "default": "./src/index.js"
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      },
+      "require": {
+        "types": "./dist/index.d.cts",
+        "default": "./dist/index.cjs"
+      }
     },
     "./package.json": "./package.json"
   },
@@ -16,6 +23,7 @@
     "pkg-field-gauge": "bin/pkg-field-gauge.js"
   },
   "files": [
+    "dist",
     "src",
     "bin",
     "action.yml",
@@ -27,7 +35,10 @@
     "node": ">=18"
   },
   "scripts": {
-    "test": "node --test test/*.test.js"
+    "test": "node --test test/*.test.js",
+    "build": "node scripts/build.mjs",
+    "pretest": "npm run build",
+    "prepublishOnly": "npm run build"
   },
   "keywords": [
     "package-json",
@@ -54,5 +65,9 @@
   "bugs": {
     "url": "https://github.com/MrLouisWright/pkg-field-gauge/issues"
   },
-  "homepage": "https://mrlouiswright.github.io/pkg-field-gauge/"
+  "homepage": "https://mrlouiswright.github.io/pkg-field-gauge/",
+  "devDependencies": {
+    "esbuild": "^0.25.0",
+    "typescript": "^5.8.2"
+  }
 }

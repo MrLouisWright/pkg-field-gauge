@@ -147,7 +147,7 @@ export async function runCli(spec, argv = process.argv.slice(2), io = { stdout: 
   if (o.version) { io.stdout.write(spec.version + '\n'); return 0; }
   if (o['list-rules']) { for (const [id, r] of Object.entries(all)) io.stdout.write(`${id.padEnd(28)} ${r.severity.padEnd(9)} ${r.title}\n`); return 0; }
   const format = o.format || 'text';
-  if (!['text', 'json', 'sarif', 'markdown'].includes(format)) return usage(`Invalid --format: ${format}`);
+  if (!['text', 'json', 'sarif', 'markdown', ...Object.keys(spec.formats || {})].includes(format)) return usage(`Invalid --format: ${format}`);
   let report; let failOn;
   try {
     const dir = resolve(spec.dirFrom ? spec.dirFrom(o, positionals) : (positionals[0] || '.'));
@@ -158,12 +158,13 @@ export async function runCli(spec, argv = process.argv.slice(2), io = { stdout: 
     report = await spec.run({ dir, positionals, values: o, config, configFile: configFile || `.${spec.name}.json` });
   } catch (e) { if (e instanceof UsageError || e.code === 'ENOENT' || e.code === 'EACCES') return usage(e.message); throw e; }
   const color = !o['no-color'] && io.stdout.isTTY && !process.env.NO_COLOR;
-  const out = { text: () => formatText(report, { color, failOn, fixes: !o['no-fixes'] }), json: () => formatJson(report), sarif: () => formatSarif(report), markdown: () => formatMarkdown(report, { failOn }) };
+  const out = { ...Object.fromEntries(Object.entries(spec.formats || {}).map(([k, fn]) => [k, () => fn(report, { failOn })])), text: () => formatText(report, { color, failOn, fixes: !o['no-fixes'] }), json: () => formatJson(report), sarif: () => formatSarif(report), markdown: () => formatMarkdown(report, { failOn }) };
   io.stdout.write(out[format]());
   try {
     if (o.json) writeFileSync(o.json, formatJson(report));
     if (o.sarif) writeFileSync(o.sarif, formatSarif(report));
     if (o.markdown) writeFileSync(o.markdown, formatMarkdown(report, { failOn }));
+    for (const [k, fn] of Object.entries(spec.formats || {})) if (typeof o[k] === 'string') writeFileSync(o[k], fn(report, { failOn }));
   } catch (e) { return usage(`Cannot write output: ${e.message}`); }
   return exceeds(report, failOn) ? 1 : 0;
 }

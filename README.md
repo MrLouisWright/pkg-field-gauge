@@ -13,8 +13,30 @@ CLI, library and GitHub Action. Node.js 18+, **zero runtime dependencies**. By L
 - **Entry points:** `main` (resolved like Node: `+.js`, `/index.js`), `module`, `browser`, `types`/`typings`, every `bin` (plus a `#!` shebang check) and every `exports` target, including subpath patterns (`./utils/*`), conditions and fallback arrays.
 - **`exports` rules:** targets must start with `./` and stay inside the package; subpaths and conditions can't be mixed; `types` must come first and `default` last; `require` must not point at ESM and `import` must not point at CommonJS (checked against the extension and `"type"`); a `types` condition must point at a `.d.ts`; `main`/`types` must be reachable through `exports["."]`; `./package.json` should be exported.
 - **`files`:** every entry point must be published (npm always includes `package.json`, README, LICENSE, `main` and `bin`), and entries that match nothing are reported.
-- **Metadata:** npm name rules, SemVer version, field types, `type` value, description, keywords, SPDX license, repository format and agreement with `git remote origin`, `engines.node`, homepage/bugs, deprecated fields (`preferGlobal`, `typings`, `licenses`…), `sideEffects` validity and the CSS trap. `--require` adds your own required fields.
+- **Metadata:** npm name rules, SemVer version, field types, `type` value, description, keywords, SPDX license, repository format and agreement with `git remote origin`, homepage/bugs, deprecated fields (`preferGlobal`, `typings`, `licenses`…), `sideEffects` validity and the CSS trap. `--require` adds your own required fields.
 - **Output:** text, JSON, SARIF 2.1.0 and Markdown, with `package.json` line numbers; `--fail-on`; exit codes 0/1/2; allowlist entries with expiry dates.
+
+## Types per resolution mode, tarball linting and HTML reports
+
+```sh
+pkg-field-gauge --pack                 # lint what npm would publish (npm pack --dry-run)
+pkg-field-gauge -f html > report.html  # self-contained HTML report
+```
+
+- For every subpath export, pkg-field-gauge works out which `.d.ts` TypeScript loads under **node10, node16 (CJS and ESM) and bundler** resolution, and flags missing types and types that masquerade as the wrong module format (the classic dual-package mistake of one ESM `index.d.ts` for both `import` and `require`).
+- **Per-package API** for tools such as monorepo-gauge:
+
+```js
+import { checkPackage } from 'pkg-field-gauge';   // or require('pkg-field-gauge')
+const { name, findings } = checkPackage('packages/a', { skip: ['keywords-missing'] });
+```
+
+- Scope: package.json entry points and metadata only. `engines` checks live in [engines-gauge](https://github.com/MrLouisWright/engines-gauge) and README checks in [readme-gauge](https://github.com/MrLouisWright/readme-gauge).
+
+### Module formats and types
+
+Ships **ESM and CommonJS** (`import` and `require` both work, via `exports`), with TypeScript declarations generated from the source at build time. Tests run on Node 18/20/22 in GitHub Actions (`test/`), including require/import checks against the packed tarball; releases are published with npm provenance.
+
 
 ## Rules
 
@@ -43,7 +65,6 @@ CLI, library and GitHub Action. Node.js 18+, **zero runtime dependencies**. By L
 | `deprecated-field` | low | Deprecated or non-standard field |
 | `required-field` | low | A field required by your config is missing |
 | `package-json-not-exported` | info | exports hides ./package.json from tools |
-| `engines-missing` | info | No engines.node |
 | `homepage-missing` | info | No homepage or bugs URL |
 | `allowlist-expired` | medium | Allowlist entry has expired |
 | `allowlist-unused` | info | Allowlist entry matched nothing |
@@ -53,7 +74,7 @@ CLI, library and GitHub Action. Node.js 18+, **zero runtime dependencies**. By L
 ```bash
 npx pkg-field-gauge                         # check ./package.json (run after your build)
 npx pkg-field-gauge packages/core --fail-on medium
-npx pkg-field-gauge --require funding,engines.node
+npx pkg-field-gauge --require funding,author
 ```
 
 Add it to `prepublishOnly` so a broken manifest can never be published:
@@ -86,7 +107,7 @@ pkg-field-gauge 1.0.0 — validate package.json fields before you publish
 Usage: pkg-field-gauge [dir] [options]
 
 Fields
-      --require <fields>    Extra required fields (comma-separated, dotted paths ok: engines.node,funding)
+      --require <fields>    Extra required fields (comma-separated, dotted paths ok: funding,author)
 
 Common
   -c, --config <file>     JSON config (default: .pkg-field-gauge.json or "pkgFieldGauge" in package.json)
@@ -114,7 +135,7 @@ Options can live in `.pkg-field-gauge.json` (or a `"pkgFieldGauge"` key in `pack
   "allowlist": [
     { "rule": "keywords-missing", "subject": "exports:./legacy", "reason": "Kept for v1 consumers until 2027", "expires": "2027-03-31" }
   ],
-  "require": ["description", "keywords", "license", "repository", "engines"]
+  "require": ["description", "keywords", "license", "repository", "funding"]
 }
 ```
 

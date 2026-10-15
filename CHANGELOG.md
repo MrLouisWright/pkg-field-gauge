@@ -1,6 +1,14 @@
 # Changelog
 
-## 1.0.1 (2026-10-14)
+## 1.0.1 (2026-10-15)
+
+- **Types per module-resolution mode** (attw-style): for every export, checks which declaration TypeScript loads under `node10`, `node16-cjs`, `node16-esm` and `bundler`. New rules: `types-unresolved`, `types-false-esm` / `types-false-cjs` (types masquerading as the wrong module format), `types-node10-subpath`. `resolveTypes` / `resolveExports` exported; `--no-types` opts out.
+- **Tarball mode** (`--pack`, `packedFiles`): lints the file list from `npm pack --dry-run` (publint-style), so `.npmignore`/`files` mistakes show up as `not-in-tarball`, with packed size in the summary.
+- **HTML report** (`-f html`, `--html <file>`, `formatHtml`): a self-contained page for CI artifacts or GitHub Pages.
+- **`checkPackage(dir, opts)` per-package API** returning raw findings (with `rules`/`skip` filters), used by monorepo-gauge for each workspace.
+- **Removed engines checks** (`engines-missing`, `engines` type check): engines belong to engines-gauge.
+- Dual ESM + CJS build, generated `.d.ts`, require/import CI checks.
+
 
 - Fix: `repository-mismatch` no longer compares a package against the git remote of an enclosing repository unless `repository.directory` places it there (fixtures and nested packages were flagged in CI).
 
