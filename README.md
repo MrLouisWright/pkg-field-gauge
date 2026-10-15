@@ -1,5 +1,7 @@
 # pkg-field-gauge
 
+[![npm version](https://img.shields.io/npm/v/pkg-field-gauge.svg)](https://www.npmjs.com/package/pkg-field-gauge) [![CI](https://github.com/MrLouisWright/pkg-field-gauge/actions/workflows/ci.yml/badge.svg)](https://github.com/MrLouisWright/pkg-field-gauge/actions/workflows/ci.yml) [![Node](https://img.shields.io/node/v/pkg-field-gauge.svg)](https://nodejs.org) [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
 > Validate package.json before you publish: exports/main/types consistency, files, repository, keywords and sideEffects.
 
 A package can pass its tests and still ship broken. The `types` condition sits after `import`, so TypeScript never sees it. `require` points at an ESM file. `main` and `exports["."]` load different files. The `.d.ts` isn't covered by `files`. `sideEffects: false` lets bundlers drop your CSS. The `repository` doesn't match the git remote, so provenance publishing fails. `pkg-field-gauge` resolves every entry point on disk and checks each field the way Node, TypeScript, bundlers and npm read it. Every finding has a line number and a **concrete fix**.
