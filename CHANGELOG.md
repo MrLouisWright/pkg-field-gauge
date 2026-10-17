@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.0 (2026-10-17)
+
+Re-release of the 1.0.1 changes below, which did not become available on npm. No code changes since 1.0.1.
+
 ## 1.0.1 (2026-10-15)
 
 - **Types per module-resolution mode** (attw-style): for every export, checks which declaration TypeScript loads under `node10`, `node16-cjs`, `node16-esm` and `bundler`. New rules: `types-unresolved`, `types-false-esm` / `types-false-cjs` (types masquerading as the wrong module format), `types-node10-subpath`. `resolveTypes` / `resolveExports` exported; `--no-types` opts out.
