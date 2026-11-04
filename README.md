@@ -102,12 +102,18 @@ MEDIUM   package.json:7 exports["."].require → "./lib/index.js" is ESM ("type"
 ## Options
 
 ```text
-pkg-field-gauge 1.0.0 — validate package.json fields before you publish
+pkg-field-gauge 1.1.0 — validate package.json fields before you publish
 
 Usage: pkg-field-gauge [dir] [options]
 
 Fields
       --require <fields>    Extra required fields (comma-separated, dotted paths ok: funding,author)
+Tarball and types
+      --pack                Lint the files `npm pack --dry-run` would publish instead of the folder
+      --no-types            Skip the per-mode type resolution checks (node10, node16-cjs, node16-esm, bundler)
+Report
+  -f html / --html <file>  Self-contained HTML report page
+Engines checks live in engines-gauge; README checks in readme-gauge.
 
 Common
   -c, --config <file>     JSON config (default: .pkg-field-gauge.json or "pkgFieldGauge" in package.json)
@@ -183,6 +189,12 @@ The action runs the bundled CLI with Node 20; it has no dependencies to install.
 Run it after your build step so the files under `exports` exist.
 
 ## Library
+
+Install it in your project first:
+
+```bash
+npm install --save-dev pkg-field-gauge
+```
 
 ```js
 import { check, validName, validLicense } from 'pkg-field-gauge';
